@@ -1,21 +1,38 @@
 package com.example.jwt.config;
 
+import com.example.jwt.jwt.LoginFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration // 이 클래스가 설정(config) 클래스 임을 나타냄
 @EnableWebSecurity // Spring Security 설정을 활성화 함
 public class SecurityConfig {
 
+
+    private final AuthenticationConfiguration authenticationConfiguration;
+
+    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration) {
+        this.authenticationConfiguration = authenticationConfiguration;
+    }
+
+
     @Bean // 비밀번호를 암호화하거나 확인할 때 사용할 인코더 , 회원가입 시 비밀번호를 해싱하는 데 사용됨 , 로그인 시 db에 저장된 해시와 비교함
     public BCryptPasswordEncoder bCryptPasswordEncoder(){
 
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
     }
 
 
@@ -49,6 +66,10 @@ public class SecurityConfig {
                         .requestMatchers("/login", "/" , "/join").permitAll() // /admin : ROLE_ADMIN 권한이 있어야 접근 가능
                         .requestMatchers("/admin").hasRole("ADMIN")            // 그 외 나머지 경로는 인증된 사용자만 허용
                         .anyRequest().authenticated());
+
+        http
+                .addFilterAt(new LoginFilter(authenticationManager(authenticationConfiguration)), UsernamePasswordAuthenticationFilter.class);
+
 
         // 세션 설정
         // jwt는 세션 기반이 아니라 토큰 기반 인증 , 매 요청마다 토큰을 검증하기 때문에 세션을 사용하지 않음
